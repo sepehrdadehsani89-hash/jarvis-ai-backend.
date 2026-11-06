@@ -1,0 +1,48 @@
+
+import { timingSafeEqual } from "node:crypto";
+
+function validToken(provided, expected) {
+  if (!provided || !expected) return false;
+
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+
+  return a.length === b.length &&
+    timingSafeEqual(a, b);
+}
+
+export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+
+  if (req.method !== "POST") {
+    return res.status(405).json({
+      error: "POST required"
+    });
+  }
+
+  const expected = process.env.JARVIS_CLIENT_TOKEN;
+  const auth = req.headers.authorization || "";
+  const token = auth.startsWith("Bearer ")
+    ? auth.slice(7)
+    : "";
+
+  if (!validToken(token, expected)) {
+    return res.status(401).json({
+      error: "Unauthorized"
+    });
+  }
+
+  const message = req.body?.message;
+
+  if (typeof message !== "string" ||
+      message.length > 4000) {
+    return res.status(400).json({
+      error: "Invalid message"
+    });
+  }
+
+  return res.status(200).json({
+    status: "connected",
+    reply: "Jarvis backend is connected. AI and voice services are not configured yet."
+  });
+}
